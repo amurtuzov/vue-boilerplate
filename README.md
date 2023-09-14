@@ -5,12 +5,12 @@
 ## Build
 ```
 yarn
-yarn build-prod
+yarn build
 ```
 
 ## Build Preview
 ```
-yarn build-prod || yarn build-dev
+yarn build
 yarn preview
 ```
 
