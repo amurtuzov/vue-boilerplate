@@ -1,13 +1,13 @@
-import axios, { CancelTokenSource } from 'axios'
+import axios from 'axios'
 
 const exampleApiCall = async (
+  abortController?: AbortController,
   params?: any,
-  cancelToken?: CancelTokenSource,
 ): Promise<any> => {
   const { data } = await axios.post(
     '/example/',
     { ...params },
-    { cancelToken: cancelToken?.token },
+    { signal: abortController?.signal },
   )
   return data
 }

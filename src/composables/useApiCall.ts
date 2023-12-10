@@ -1,5 +1,5 @@
 import { computed, isReactive, ref, Ref, toRaw, watch } from 'vue'
-import axios, { AxiosError, CancelTokenSource } from 'axios'
+import { AxiosError } from 'axios'
 import { RequestStatus } from '@/enum/RequestStatus'
 import { HTTPError } from '@/types/httpError'
 import { adaptResponseForClient } from '@/helpers/adaptResponseForClient'
@@ -7,10 +7,11 @@ import { CamelizeKeys } from '@/types/camelCaseProperties'
 import { adaptParamsToServer } from '@/helpers/adaptParamsToServer'
 
 export const useApiCall = <T, K, V = undefined>(
-  apiCallFunction: (params?: V, cancelToken?: CancelTokenSource) => Promise<T>,
+  apiCallFunction: (abortController: AbortController, params?: V) => Promise<T>,
   externalCall = false,
   params?: V,
 ) => {
+  let abortController: AbortController | null = null
   const data = ref<CamelizeKeys<T> | null>(null) as Ref<CamelizeKeys<T> | null>
   const error = ref<HTTPError<CamelizeKeys<K>> | null>(null) as Ref<HTTPError<
     CamelizeKeys<K>
@@ -18,7 +19,6 @@ export const useApiCall = <T, K, V = undefined>(
   const requestStatus = ref<RequestStatus>(
     RequestStatus.NOT_STARTED,
   ) as Ref<RequestStatus>
-  let cancelToken: CancelTokenSource | null = null
 
   const isLoading = computed(
     () => requestStatus.value === RequestStatus.PENDING,
@@ -29,19 +29,17 @@ export const useApiCall = <T, K, V = undefined>(
     error.value = null
     requestStatus.value = RequestStatus.PENDING
     try {
+      abortController?.abort()
+      abortController = new AbortController()
       const apiCallParams = toRaw(externalParams || params)
-      cancelToken?.cancel()
-      cancelToken = axios.CancelToken.source()
       const response = await apiCallFunction(
+        abortController,
         adaptParamsToServer<V>(apiCallParams),
-        cancelToken,
       )
       data.value = adaptResponseForClient<T>(response)
       requestStatus.value = RequestStatus.SUCCESS
+      abortController = null
     } catch (e: unknown) {
-      if (!axios.isCancel(e)) {
-        requestStatus.value = RequestStatus.FAILED
-      }
       requestStatus.value = RequestStatus.FAILED
       const axiosError = e as AxiosError<K>
       const status = axiosError.response?.status
@@ -52,8 +50,6 @@ export const useApiCall = <T, K, V = undefined>(
       if (externalCall) {
         throw new Error('Error for external call catch')
       }
-    } finally {
-      requestStatus.value = RequestStatus.NOT_STARTED
     }
   }
 

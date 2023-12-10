@@ -1,6 +1,6 @@
 # VUE TS BoilerPlate
 
-## Node - >= v16.15.1
+## Node - >= v18
 
 ## Build
 ```
